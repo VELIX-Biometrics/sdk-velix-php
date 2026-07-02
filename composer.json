@@ -1,0 +1,25 @@
+{
+    "name": "velix/sdk",
+    "description": "SDK oficial do VELIX — controle de acesso biométrico",
+    "type": "library",
+    "license": "MIT",
+    "require": {
+        "php": ">=8.1",
+        "guzzlehttp/guzzle": "^7.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^10.0",
+        "guzzlehttp/psr7": "^2.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Velix\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Velix\\Tests\\": "tests/"
+        }
+    },
+    "minimum-stability": "stable"
+}

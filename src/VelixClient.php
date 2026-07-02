@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Velix;
 
 use GuzzleHttp\Client;
+use GuzzleHttp\Exception\ConnectException;
 use GuzzleHttp\Exception\RequestException;
 use GuzzleHttp\HandlerStack;
 use GuzzleHttp\Middleware;
@@ -74,6 +75,11 @@ class VelixClient
             $body = json_decode((string) $response->getBody(), true);
             // identity-core wraps responses in { data: T }
             return $body['data'] ?? $body;
+        } catch (ConnectException $e) {
+            // ConnectException extends TransferException, not RequestException,
+            // and never carries a response — must be caught separately or it
+            // escapes as a raw GuzzleException instead of a VelixException.
+            throw new VelixException($e->getMessage(), 0, $e);
         } catch (RequestException $e) {
             $status = $e->getResponse()?->getStatusCode();
             $body = $e->getResponse() ? json_decode((string) $e->getResponse()->getBody(), true) : [];

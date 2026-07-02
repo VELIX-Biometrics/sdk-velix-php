@@ -3,6 +3,15 @@
     "description": "SDK oficial do VELIX — controle de acesso biométrico",
     "type": "library",
     "license": "MIT",
+    "homepage": "https://bitbucket.org/brajola/velix-sdk-php",
+    "authors": [
+        {
+            "name": "VELIX Biometrics",
+            "email": "brajola@gmail.com",
+            "homepage": "https://velixbiometrics.com"
+        }
+    ],
+    "keywords": ["velix", "biometrics", "facial-recognition", "sdk", "php"],
     "require": {
         "php": ">=8.1",
         "guzzlehttp/guzzle": "^7.0"

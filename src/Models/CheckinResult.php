@@ -7,21 +7,24 @@ namespace Velix\Models;
 class CheckinResult
 {
     public function __construct(
-        public readonly bool $passed,
+        public readonly bool $matched,
         public readonly ?string $personId,
-        public readonly ?string $personName,
-        public readonly string $action,  // GRANTED | DENIED
-        public readonly ?string $reason, // face_not_recognized | liveness_failed | access_denied
+        public readonly ?float $qualityScore,
+        public readonly ?string $message,
     ) {}
 
+    /**
+     * @param array<string, mixed> $data Wire shape (snake_case) — see CheckinIdentifyResponse
+     *                                    in public-api.yaml. Liveness score is never included
+     *                                    by design (only `matched` is exposed).
+     */
     public static function fromArray(array $data): self
     {
         return new self(
-            passed: (bool) ($data['passed'] ?? false),
-            personId: $data['personId'] ?? null,
-            personName: $data['personName'] ?? null,
-            action: $data['action'] ?? 'DENIED',
-            reason: $data['reason'] ?? null,
+            matched: (bool) ($data['matched'] ?? false),
+            personId: $data['person_id'] ?? null,
+            qualityScore: isset($data['quality_score']) ? (float) $data['quality_score'] : null,
+            message: $data['message'] ?? null,
         );
     }
 }

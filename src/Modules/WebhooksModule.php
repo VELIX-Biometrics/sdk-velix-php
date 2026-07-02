@@ -10,13 +10,17 @@ class WebhooksModule
 {
     public function __construct(private readonly VelixClient $client) {}
 
-    public function configure(string $url, string $secret, array $events = []): array
+    /**
+     * @deprecated PUT /v1/tenants/me/settings não existe na superfície de API key
+     *             `/v1/api/*` (ver public-api.yaml, task #593). Configuração de webhook
+     *             não é exposta nesta superfície hoje. Ver task #656.
+     */
+    public function configure(string $url, string $secret, array $events = []): never
     {
-        return $this->client->put('/v1/tenants/me/settings', [
-            'webhookUrl' => $url,
-            'webhookSecret' => $secret,
-            'webhookEvents' => $events,
-        ]);
+        throw new \RuntimeException(
+            'WebhooksModule::configure() aponta para um endpoint que não existe na API real — '
+            . 'ver public-api.yaml (task #593) e task #656.'
+        );
     }
 
     /**

@@ -8,15 +8,20 @@ use PHPUnit\Framework\TestCase;
 use GuzzleHttp\Client;
 use GuzzleHttp\Handler\MockHandler;
 use GuzzleHttp\HandlerStack;
-use GuzzleHttp\Psr7\Response;
 use Velix\VelixClient;
 use Velix\Modules\TenantsModule;
+use Velix\Modules\WebhooksModule;
 
+/**
+ * TenantsModule e WebhooksModule::configure() não têm endpoint correspondente na
+ * superfície de API key `/v1/api/*` (public-api.yaml, task #593) — todos os métodos
+ * agora lançam RuntimeException. Ver task #656.
+ */
 class TenantsTest extends TestCase
 {
-    private function makeClient(array $responses): VelixClient
+    private function makeClient(): VelixClient
     {
-        $mock = new MockHandler($responses);
+        $mock = new MockHandler([]);
         $stack = HandlerStack::create($mock);
         $client = new VelixClient(['apiUrl' => 'http://localhost', 'apiKey' => 'test']);
         $ref = new \ReflectionProperty(VelixClient::class, 'http');
@@ -25,40 +30,34 @@ class TenantsTest extends TestCase
         return $client;
     }
 
-    public function testMeReturnsTenant(): void
+    public function testMeThrowsNotImplemented(): void
     {
-        $client = $this->makeClient([
-            new Response(200, [], json_encode([
-                'data' => [
-                    'id' => 'tenant-uuid', 'name' => 'Acme Corp', 'slug' => 'acme',
-                    'plan' => 'enterprise', 'maxPersons' => 1000,
-                ],
-            ])),
-        ]);
+        $this->expectException(\RuntimeException::class);
 
-        $tenant = (new TenantsModule($client))->me();
-
-        $this->assertSame('tenant-uuid', $tenant->id);
-        $this->assertSame('acme', $tenant->slug);
-        $this->assertSame('enterprise', $tenant->plan);
+        (new TenantsModule($this->makeClient()))->me();
     }
 
-    public function testUpdateSettingsReturnsUpdatedTenant(): void
+    public function testUpdateSettingsThrowsNotImplemented(): void
     {
-        $client = $this->makeClient([
-            new Response(200, [], json_encode([
-                'data' => [
-                    'id' => 'tenant-uuid', 'requireLiveness' => true, 'timezone' => 'America/Sao_Paulo',
-                ],
-            ])),
-        ]);
+        $this->expectException(\RuntimeException::class);
 
-        $tenant = (new TenantsModule($client))->updateSettings([
-            'requireLiveness' => true,
-            'timezone' => 'America/Sao_Paulo',
-        ]);
+        (new TenantsModule($this->makeClient()))->updateSettings(['requireLiveness' => true]);
+    }
 
-        $this->assertTrue($tenant->requireLiveness);
-        $this->assertSame('America/Sao_Paulo', $tenant->timezone);
+    public function testWebhooksConfigureThrowsNotImplemented(): void
+    {
+        $this->expectException(\RuntimeException::class);
+
+        (new WebhooksModule($this->makeClient()))->configure('https://example.com', 'secret');
+    }
+
+    public function testWebhooksValidateSignatureStillWorks(): void
+    {
+        $payload = '{"event":"test"}';
+        $secret = 'shh';
+        $signature = 'sha256=' . hash_hmac('sha256', $payload, $secret);
+
+        $this->assertTrue(WebhooksModule::validateSignature($payload, $signature, $secret));
+        $this->assertFalse(WebhooksModule::validateSignature($payload, 'sha256=bad', $secret));
     }
 }

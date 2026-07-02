@@ -22,13 +22,17 @@ class VelixClient
     public function __construct(private readonly array $config)
     {
         $this->apiUrl = rtrim($config['apiUrl'] ?? 'https://api.velixbiometrics.com', '/');
+        // Contrato oficial (x-velix-sdk-contract-notes.timeout_default_ms, public-api.yaml):
+        // 30000ms (30s) default, sempre configurável via $config['timeout'] (segundos, unidade do Guzzle).
         $timeout = $config['timeout'] ?? 30;
 
         $stack = HandlerStack::create();
         $stack->push($this->retryMiddleware());
 
-        $headers = ['User-Agent' => 'velix-php-sdk/1.0.0', 'Accept' => 'application/json'];
+        $headers = ['User-Agent' => 'velix-php-sdk/0.1.0-alpha1', 'Accept' => 'application/json'];
 
+        // Auth: x-api-key é o header oficial; Authorization: Bearer vlx_... é a alternativa
+        // aceita pelo mesmo ApiKeyAuthGuard. Nunca outro mecanismo de auth (ver public-api.yaml).
         if (!empty($config['apiKey'])) {
             $headers['x-api-key'] = $config['apiKey'];
         } elseif (!empty($config['token'])) {

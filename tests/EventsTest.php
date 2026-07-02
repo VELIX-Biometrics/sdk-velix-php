@@ -26,62 +26,78 @@ class EventsTest extends TestCase
         return $client;
     }
 
-    public function testListReturnsEvents(): void
+    public function testCreateGuestReturnsGuest(): void
     {
         $client = $this->makeClient([
-            new Response(200, [], json_encode([
+            new Response(201, [], json_encode([
                 'data' => [
-                    'items' => [
-                        ['id' => 'evt-1', 'name' => 'Tech Summit', 'status' => 'active'],
-                    ],
-                    'total' => 1, 'page' => 1, 'limit' => 20,
+                    'id' => 'guest-1',
+                    'eventId' => 'evt-1',
+                    'name' => 'Maria Souza',
+                    'email' => 'maria@example.com',
+                    'status' => 'invited',
+                    'categoryId' => null,
                 ],
             ])),
         ]);
 
-        $result = (new EventsModule($client))->list();
+        $guest = (new EventsModule($client))->createGuest('evt-1', [
+            'name' => 'Maria Souza',
+            'email' => 'maria@example.com',
+        ]);
 
-        $this->assertSame(1, $result->total);
-        $this->assertCount(1, $result->items);
-        $this->assertSame('evt-1', $result->items[0]->id);
+        $this->assertSame('guest-1', $guest->id);
+        $this->assertSame('evt-1', $guest->eventId);
+        $this->assertSame('invited', $guest->status);
     }
 
-    public function testGetReturnsEvent(): void
+    public function testGetGuestReturnsGuest(): void
     {
         $client = $this->makeClient([
             new Response(200, [], json_encode([
-                'data' => ['id' => 'evt-1', 'name' => 'Tech Summit', 'status' => 'active'],
+                'data' => [
+                    'id' => 'guest-1',
+                    'eventId' => 'evt-1',
+                    'name' => 'Maria Souza',
+                    'email' => 'maria@example.com',
+                    'status' => 'checked_in',
+                    'categoryId' => 'cat-1',
+                ],
             ])),
         ]);
 
-        $event = (new EventsModule($client))->get('evt-1');
+        $guest = (new EventsModule($client))->getGuest('evt-1', 'guest-1');
 
-        $this->assertSame('evt-1', $event->id);
-        $this->assertSame('Tech Summit', $event->name);
+        $this->assertSame('checked_in', $guest->status);
+        $this->assertSame('cat-1', $guest->categoryId);
     }
 
-    public function testGetThrows404(): void
+    public function testGetGuestThrows404(): void
     {
         $this->expectException(VelixException::class);
 
         $client = $this->makeClient([
-            new Response(404, [], json_encode(['message' => 'Event not found'])),
+            new Response(404, [], json_encode(['message' => 'Guest not found'])),
         ]);
 
-        (new EventsModule($client))->get('nonexistent');
+        (new EventsModule($client))->getGuest('evt-1', 'nonexistent');
     }
 
-    public function testCreateReturnsEvent(): void
+    public function testListThrowsNotImplemented(): void
     {
-        $client = $this->makeClient([
-            new Response(201, [], json_encode([
-                'data' => ['id' => 'evt-new', 'name' => 'New Event', 'status' => 'draft'],
-            ])),
-        ]);
+        $this->expectException(\RuntimeException::class);
 
-        $event = (new EventsModule($client))->create(['name' => 'New Event']);
+        $client = $this->makeClient([]);
 
-        $this->assertSame('evt-new', $event->id);
-        $this->assertSame('draft', $event->status);
+        (new EventsModule($client))->list();
+    }
+
+    public function testCreateThrowsNotImplemented(): void
+    {
+        $this->expectException(\RuntimeException::class);
+
+        $client = $this->makeClient([]);
+
+        (new EventsModule($client))->create(['name' => 'New Event']);
     }
 }

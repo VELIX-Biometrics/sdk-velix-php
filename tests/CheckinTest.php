@@ -30,45 +30,43 @@ class CheckinTest extends TestCase
         return $client;
     }
 
-    public function testFacialGranted(): void
+    public function testIdentifyMatched(): void
     {
         $client = $this->makeClient([
             new Response(200, [], json_encode([
                 'data' => [
-                    'passed' => true,
-                    'personId' => 'uuid-123',
-                    'personName' => 'João Silva',
-                    'action' => 'GRANTED',
-                    'reason' => null,
+                    'matched' => true,
+                    'person_id' => 'uuid-123',
+                    'quality_score' => 0.92,
+                    'message' => 'OK',
                 ],
             ])),
         ]);
 
-        $result = (new CheckinModule($client))->facial('acme', base64_encode('fake-frame'));
+        $result = (new CheckinModule($client))->identify(base64_encode('fake-frame'));
 
-        $this->assertTrue($result->passed);
-        $this->assertSame('GRANTED', $result->action);
+        $this->assertTrue($result->matched);
         $this->assertSame('uuid-123', $result->personId);
+        $this->assertSame(0.92, $result->qualityScore);
     }
 
-    public function testFacialDenied(): void
+    public function testIdentifyNotMatched(): void
     {
         $client = $this->makeClient([
             new Response(200, [], json_encode([
                 'data' => [
-                    'passed' => false,
-                    'personId' => null,
-                    'personName' => null,
-                    'action' => 'DENIED',
-                    'reason' => 'face_not_recognized',
+                    'matched' => false,
+                    'person_id' => null,
+                    'quality_score' => 0.4,
+                    'message' => 'face_not_recognized',
                 ],
             ])),
         ]);
 
-        $result = (new CheckinModule($client))->facial('acme', base64_encode('fake-frame'));
+        $result = (new CheckinModule($client))->identify(base64_encode('fake-frame'));
 
-        $this->assertFalse($result->passed);
-        $this->assertSame('face_not_recognized', $result->reason);
+        $this->assertFalse($result->matched);
+        $this->assertSame('face_not_recognized', $result->message);
     }
 
     public function testThrowsAuthExceptionOn401(): void
@@ -79,6 +77,24 @@ class CheckinTest extends TestCase
             new Response(401, [], json_encode(['message' => 'Unauthorized'])),
         ]);
 
-        (new CheckinModule($client))->facial('acme', base64_encode('frame'));
+        (new CheckinModule($client))->identify(base64_encode('frame'));
+    }
+
+    public function testQrThrowsNotImplemented(): void
+    {
+        $this->expectException(\RuntimeException::class);
+
+        $client = $this->makeClient([]);
+
+        (new CheckinModule($client))->qr('acme', '123456');
+    }
+
+    public function testPinThrowsNotImplemented(): void
+    {
+        $this->expectException(\RuntimeException::class);
+
+        $client = $this->makeClient([]);
+
+        (new CheckinModule($client))->pin('acme', '1234');
     }
 }

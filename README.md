@@ -1,6 +1,8 @@
 # velix/sdk — PHP SDK ![version](https://img.shields.io/badge/version-0.1.0--alpha1-blue)
 
-> ⚠️ **Alpha / pre-release.** This SDK targets a public API surface that does not yet fully exist on the VELIX backend (see internal task #593). Endpoints and auth may not work against production. Do not use in production integrations yet.
+> ⚠️ **Alpha / pre-release.** This SDK targets the real `/v1/api/*` API-key surface of
+> `api-velix-identity-core`, defined in `lib-velix-contracts/openapi/public-api.yaml`
+> (task #593). Only 6 endpoints exist today — anything else is not implemented.
 
 Official PHP SDK for the VELIX Biometrics platform — facial access control B2B SaaS.
 
@@ -16,6 +18,12 @@ Official PHP SDK for the VELIX Biometrics platform — facial access control B2B
 composer require velix/sdk
 ```
 
+## Auth
+
+All requests are authenticated with an API key issued per tenant application. Send it via
+the `x-api-key` header (default) or `Authorization: Bearer vlx_...` (accepted by the same
+guard). Never use any other auth mechanism.
+
 ## Quick Start
 
 ```php
@@ -23,12 +31,13 @@ use Velix\VelixClient;
 use Velix\Modules\CheckinModule;
 
 $client = new VelixClient([
-    'apiUrl' => $_ENV['VELIX_API_URL'],
-    'apiKey' => $_ENV['VELIX_API_KEY'],
+    'apiUrl'  => $_ENV['VELIX_API_URL'],
+    'apiKey'  => $_ENV['VELIX_API_KEY'],
+    'timeout' => 30, // seconds; default is 30s (30000ms) per SDK contract, always overridable
 ]);
 
-$result = (new CheckinModule($client))->facial('tenant-slug', $frameBase64);
-echo $result->passed ? 'GRANTED' : 'DENIED';
+$result = (new CheckinModule($client))->identify($frameBase64);
+echo $result->matched ? 'MATCHED' : 'NOT MATCHED';
 ```
 
 ## Environment Variables
@@ -36,17 +45,41 @@ echo $result->passed ? 'GRANTED' : 'DENIED';
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `VELIX_API_URL` | Yes | API base URL (`https://api.velixbiometrics.com`) |
-| `VELIX_API_KEY` | Yes | Tenant API key (`vx_live_...` or `vx_sandbox_...`) |
+| `VELIX_API_KEY` | Yes | API key (`vlx_...`) |
 
 ## Modules
 
-| Module | Methods |
-|--------|---------|
-| `CheckinModule` | `facial()`, `qr()`, `pin()`, `getHistory()` |
-| `PersonsModule` | `list()`, `get()`, `create()`, `update()`, `delete()`, `enroll()` |
-| `EventsModule` | `list()`, `get()`, `create()`, `configure()` |
-| `TenantsModule` | `me()`, `updateSettings()` |
-| `WebhooksModule` | `configure()`, `validateSignature()` |
+Only the 6 real endpoints of `/v1/api/*` are implemented. `PersonsModule`,
+`TenantsModule` and `WebhooksModule::configure()` are kept for backward-compatible
+autoloading only — every method throws `RuntimeException` since no corresponding
+endpoint exists on the real API.
+
+| Module | Method | Endpoint | Scope |
+|--------|--------|----------|-------|
+| `OnboardingModule` | `enroll()` | `POST /v1/api/onboarding` | `onboarding:write` |
+| `CheckinModule` | `identify()` | `POST /v1/api/checkin/identify` | `checkin:write` |
+| `LgpdModule` | `requestDeletion()` | `POST /v1/api/deletion-request` | `lgpd:write` |
+| `MeModule` | `get()` | `GET /v1/api/me/{personId}` | `me:read` |
+| `EventsModule` | `createGuest()` | `POST /v1/api/events/{id}/guests` | `events:write` |
+| `EventsModule` | `getGuest()` | `GET /v1/api/events/{id}/guests/{guestId}` | `events:read` |
+
+**Velix Time is not covered.** No `/v1/api/time/*` endpoint exists in the backend yet
+(see task #616) — there is no Time-related class in this SDK to call.
+
+## Onboarding Module
+
+```php
+use Velix\Modules\OnboardingModule;
+
+$onboarding = new OnboardingModule($client);
+
+$result = $onboarding->enroll('João Silva', [$frame1, $frame2, $frame3], [
+    'email' => 'joao@company.com',
+    'external_id' => 'EMP-001',
+]);
+
+// $result->personId, $result->identityId, $result->enrolled, $result->framesProcessed
+```
 
 ## Checkin Module
 
@@ -55,50 +88,33 @@ use Velix\Modules\CheckinModule;
 
 $checkin = new CheckinModule($client);
 
-// Facial identification (base64 JPEG frame)
-$result = $checkin->facial('tenant-slug', $frameBase64);
-// $result->passed === true
-// $result->personId === 'uuid'
-// $result->personName === 'João Silva'
-
-// QR code checkin
-$result = $checkin->qr('tenant-slug', $qrToken);
-
-// PIN checkin
-$result = $checkin->pin('tenant-slug', $pin);
-
-// Paginated history
-$history = $checkin->getHistory('tenant-slug', page: 1, limit: 20);
-```
-
-## Persons Module
-
-```php
-use Velix\Modules\PersonsModule;
-
-$persons = new PersonsModule($client);
-
-// List with optional search
-$list = $persons->list(page: 1, limit: 20, search: 'João');
-
-// Get by ID
-$person = $persons->get('uuid');
-
-// Create
-$created = $persons->create([
-    'name'       => 'João Silva',
-    'email'      => 'joao@company.com',
-    'externalId' => 'EMP-001',
+$result = $checkin->identify($frameBase64, [
+    'topK' => 3,
+    'location' => ['latitude' => -23.55, 'longitude' => -46.63],
 ]);
 
-// Update
-$persons->update('uuid', ['name' => 'João B. Silva']);
+// $result->matched, $result->personId, $result->qualityScore, $result->message
+// Liveness score is never exposed — only booleans/messages.
+```
 
-// Enroll biometrics (minimum 3 base64 frames)
-$persons->enroll('uuid', [$frame1, $frame2, $frame3]);
+`qr()` and `pin()` throw `RuntimeException` — no such endpoint exists in `/v1/api/*`.
 
-// Delete
-$persons->delete('uuid');
+## Me Module
+
+```php
+use Velix\Modules\MeModule;
+
+$me = (new MeModule($client))->get('person-uuid');
+// $me->id, $me->name, $me->email, $me->phone, $me->photoUrl, $me->createdAt
+```
+
+## LGPD Module
+
+```php
+use Velix\Modules\LgpdModule;
+
+$result = (new LgpdModule($client))->requestDeletion('person-uuid');
+// $result->protocolNumber, $result->message
 ```
 
 ## Events Module
@@ -108,13 +124,21 @@ use Velix\Modules\EventsModule;
 
 $events = new EventsModule($client);
 
-$list    = $events->list(page: 1, limit: 20);
-$event   = $events->get('uuid');
-$created = $events->create(['name' => 'Annual Conference 2026', 'date' => '2026-09-01']);
-$events->configure('uuid', ['checkInOpen' => true, 'requireLiveness' => true]);
+$guest = $events->createGuest('event-uuid', [
+    'name' => 'Maria Souza',
+    'email' => 'maria@example.com',
+]);
+
+$guest = $events->getGuest('event-uuid', $guest->id);
 ```
 
-## Webhook Validation
+`list()`, `get()`, `create()`, `configure()`, `delete()` throw `RuntimeException` — no such
+event-management endpoints exist in `/v1/api/*`.
+
+## Webhook Signature Validation
+
+`WebhooksModule::validateSignature()` is a pure local helper (no HTTP call) and remains
+functional. `WebhooksModule::configure()` throws `RuntimeException` — no matching endpoint.
 
 ```php
 use Velix\Modules\WebhooksModule;
@@ -139,7 +163,7 @@ use Velix\Exceptions\BiometricException;
 use Velix\Exceptions\VelixException;
 
 try {
-    $result = $checkin->facial('slug', $frame);
+    $result = $checkin->identify($frameBase64);
 } catch (AuthException $e) {
     echo 'Invalid API key';
 } catch (BiometricException $e) {

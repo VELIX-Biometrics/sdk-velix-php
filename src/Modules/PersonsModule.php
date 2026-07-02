@@ -5,44 +5,68 @@ declare(strict_types=1);
 namespace Velix\Modules;
 
 use Velix\VelixClient;
-use Velix\Models\Person;
 
+/**
+ * @deprecated Nenhum destes endpoints existe na superfície real `/v1/api/*`
+ *             (ver public-api.yaml, task #593). Cadastro biométrico é feito via
+ *             OnboardingModule::enroll() (POST /v1/api/onboarding) e consulta de
+ *             dados via MeModule::get() (GET /v1/api/me/{personId}). Esta classe
+ *             é mantida apenas para não quebrar o autoload de consumidores antigos
+ *             — todos os métodos lançam RuntimeException. Ver task #656.
+ */
 class PersonsModule
 {
     public function __construct(private readonly VelixClient $client) {}
 
-    public function list(array $params = []): array
+    public function list(array $params = []): never
     {
-        $data = $this->client->get('/v1/persons', $params);
-        return array_map(fn(array $p) => Person::fromArray($p), $data['items'] ?? $data);
+        throw new \RuntimeException(
+            'PersonsModule::list() aponta para um endpoint que não existe na API real — '
+            . 'use MeModule::get() ou consulte a spec (public-api.yaml, task #593).'
+        );
     }
 
-    public function get(string $id): Person
+    public function get(string $id): never
     {
-        return Person::fromArray($this->client->get("/v1/persons/{$id}"));
+        throw new \RuntimeException(
+            'PersonsModule::get() foi substituído por MeModule::get() '
+            . '(GET /v1/api/me/{personId}) — ver public-api.yaml (task #593) e task #656.'
+        );
     }
 
-    public function create(array $attrs): Person
+    public function create(array $attrs): never
     {
-        return Person::fromArray($this->client->post('/v1/persons', $attrs));
+        throw new \RuntimeException(
+            'PersonsModule::create() aponta para um endpoint que não existe na API real — '
+            . 'use OnboardingModule::enroll() (POST /v1/api/onboarding).'
+        );
     }
 
-    public function update(string $id, array $attrs): Person
+    public function update(string $id, array $attrs): never
     {
-        return Person::fromArray($this->client->put("/v1/persons/{$id}", $attrs));
+        throw new \RuntimeException(
+            'PersonsModule::update() aponta para um endpoint que não existe na API real — '
+            . 'ver public-api.yaml (task #593) e task #656.'
+        );
     }
 
-    public function delete(string $id): void
+    public function delete(string $id): never
     {
-        $this->client->delete("/v1/persons/{$id}");
+        throw new \RuntimeException(
+            'PersonsModule::delete() aponta para um endpoint que não existe na API real — '
+            . 'use LgpdModule::requestDeletion() (POST /v1/api/deletion-request).'
+        );
     }
 
     /**
-     * Enroll biométrico — frames deve ser array de até 3 imagens base64.
+     * @deprecated Endpoint /v1/persons/{id}/enroll não existe. Use OnboardingModule::enroll()
+     *             (POST /v1/api/onboarding).
      */
-    public function enroll(string $id, array $frames): bool
+    public function enroll(string $id, array $frames): never
     {
-        $result = $this->client->post("/v1/persons/{$id}/enroll", ['frames' => $frames]);
-        return (bool) ($result['enrolled'] ?? false);
+        throw new \RuntimeException(
+            'PersonsModule::enroll() foi substituído por OnboardingModule::enroll() '
+            . '(POST /v1/api/onboarding) — ver public-api.yaml (task #593) e task #656.'
+        );
     }
 }

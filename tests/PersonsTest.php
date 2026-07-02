@@ -11,6 +11,8 @@ use GuzzleHttp\HandlerStack;
 use GuzzleHttp\Psr7\Response;
 use Velix\VelixClient;
 use Velix\Modules\PersonsModule;
+use Velix\Modules\OnboardingModule;
+use Velix\Modules\MeModule;
 
 class PersonsTest extends TestCase
 {
@@ -28,39 +30,73 @@ class PersonsTest extends TestCase
         return $client;
     }
 
-    public function testCreatePerson(): void
+    public function testPersonsModuleMethodsAreNotImplemented(): void
+    {
+        $client = $this->makeClient([]);
+        $module = new PersonsModule($client);
+
+        foreach (['list', 'get', 'create', 'update', 'delete', 'enroll'] as $method) {
+            try {
+                match ($method) {
+                    'list' => $module->list(),
+                    'get' => $module->get('id'),
+                    'create' => $module->create([]),
+                    'update' => $module->update('id', []),
+                    'delete' => $module->delete('id'),
+                    'enroll' => $module->enroll('id', []),
+                };
+                $this->fail("PersonsModule::{$method}() deveria lançar RuntimeException");
+            } catch (\RuntimeException $e) {
+                $this->assertNotEmpty($e->getMessage());
+            }
+        }
+    }
+
+    public function testOnboardingEnroll(): void
     {
         $client = $this->makeClient([
             new Response(201, [], json_encode([
                 'data' => [
-                    'id' => 'uuid-456',
-                    'name' => 'Maria Souza',
-                    'email' => 'maria@example.com',
-                    'document' => '123.456.789-00',
-                    'status' => 'active',
-                    'biometricEnrolled' => false,
-                    'createdAt' => '2026-01-01T00:00:00Z',
+                    'person_id' => 'uuid-456',
+                    'identity_id' => 'identity-1',
+                    'enrolled' => true,
+                    'frames_processed' => 3,
+                    'frames_results' => [],
+                    'embedding_id' => 'emb-1',
+                    'message' => 'Onboarding concluído',
                 ],
             ])),
         ]);
 
-        $person = (new PersonsModule($client))->create([
-            'name' => 'Maria Souza',
-            'email' => 'maria@example.com',
-        ]);
+        $result = (new OnboardingModule($client))->enroll('Maria Souza', [
+            base64_encode('f1'),
+            base64_encode('f2'),
+            base64_encode('f3'),
+        ], ['email' => 'maria@example.com']);
 
-        $this->assertSame('uuid-456', $person->id);
-        $this->assertFalse($person->biometricEnrolled);
+        $this->assertSame('uuid-456', $result->personId);
+        $this->assertTrue($result->enrolled);
+        $this->assertSame(3, $result->framesProcessed);
     }
 
-    public function testEnroll(): void
+    public function testMeGet(): void
     {
         $client = $this->makeClient([
-            new Response(200, [], json_encode(['data' => ['enrolled' => true]])),
+            new Response(200, [], json_encode([
+                'data' => [
+                    'id' => 'uuid-456',
+                    'name' => 'Maria Souza',
+                    'email' => 'maria@example.com',
+                    'phone' => null,
+                    'photo_url' => null,
+                    'created_at' => '2026-01-01T00:00:00Z',
+                ],
+            ])),
         ]);
 
-        $result = (new PersonsModule($client))->enroll('uuid-456', [base64_encode('f1'), base64_encode('f2')]);
+        $me = (new MeModule($client))->get('uuid-456');
 
-        $this->assertTrue($result);
+        $this->assertSame('uuid-456', $me->id);
+        $this->assertSame('Maria Souza', $me->name);
     }
 }

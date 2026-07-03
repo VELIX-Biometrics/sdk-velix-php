@@ -1,8 +1,6 @@
-# velix/sdk — PHP SDK ![version](https://img.shields.io/badge/version-0.1.0--alpha1-blue)
+# velixbiometrics/sdk — PHP SDK ![version](https://img.shields.io/badge/version-0.1.0--alpha1-blue)
 
-> ⚠️ **Alpha / pre-release.** This SDK targets the real `/v1/api/*` API-key surface of
-> `api-velix-identity-core`, defined in `lib-velix-contracts/openapi/public-api.yaml`
-> (task #593). Only 6 endpoints exist today — anything else is not implemented.
+> ⚠️ **Alpha / pre-release**, mas já publicado e confirmado funcionando de ponta a ponta contra a API real de staging (onboarding, LGPD, me, events). **Packagist:** https://packagist.org/packages/velixbiometrics/sdk
 
 Official PHP SDK for the VELIX Biometrics platform — facial access control B2B SaaS.
 
@@ -15,7 +13,7 @@ Official PHP SDK for the VELIX Biometrics platform — facial access control B2B
 ## Installation
 
 ```bash
-composer require velix/sdk
+composer require velixbiometrics/sdk
 ```
 
 ## Auth

@@ -1,5 +1,5 @@
 {
-    "name": "velix/sdk",
+    "name": "velixbiometrics/sdk",
     "description": "SDK oficial do VELIX — controle de acesso biométrico",
     "type": "library",
     "license": "MIT",

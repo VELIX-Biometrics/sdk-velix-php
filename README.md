@@ -91,8 +91,8 @@ $result = $checkin->identify($frameBase64, [
     'location' => ['latitude' => -23.55, 'longitude' => -46.63],
 ]);
 
-// $result->matched, $result->personId, $result->qualityScore, $result->message
-// Liveness score is never exposed — only booleans/messages.
+// $result->matched, $result->subjectId, $result->subjectName, $result->livenessOk, $result->model
+// Liveness/similarity score is never exposed — only booleans.
 ```
 
 `qr()` and `pin()` throw `RuntimeException` — no such endpoint exists in `/v1/api/*`.

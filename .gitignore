@@ -1,0 +1,4 @@
+
+# Claude Code (config local / worktrees de agente — nunca versionar)
+.claude/
+.phpunit.result.cache

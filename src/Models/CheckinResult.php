@@ -8,23 +8,26 @@ class CheckinResult
 {
     public function __construct(
         public readonly bool $matched,
-        public readonly ?string $personId,
-        public readonly ?float $qualityScore,
-        public readonly ?string $message,
+        public readonly ?string $subjectId,
+        public readonly ?string $subjectName,
+        public readonly bool $livenessOk,
+        public readonly ?string $model,
     ) {}
 
     /**
-     * @param array<string, mixed> $data Wire shape (snake_case) — see CheckinIdentifyResponse
-     *                                    in public-api.yaml. Liveness score is never included
-     *                                    by design (only `matched` is exposed).
+     * @param array<string, mixed> $data Wire shape real de CheckinService.identifyFace
+     *                                    (checkin.service.ts): { match, subjectId, subjectName,
+     *                                    liveness: { ok }, model }. Score de similaridade e de
+     *                                    liveness nunca são incluídos por design.
      */
     public static function fromArray(array $data): self
     {
         return new self(
-            matched: (bool) ($data['matched'] ?? false),
-            personId: $data['person_id'] ?? null,
-            qualityScore: isset($data['quality_score']) ? (float) $data['quality_score'] : null,
-            message: $data['message'] ?? null,
+            matched: (bool) ($data['match'] ?? false),
+            subjectId: $data['subjectId'] ?? null,
+            subjectName: $data['subjectName'] ?? null,
+            livenessOk: (bool) ($data['liveness']['ok'] ?? false),
+            model: $data['model'] ?? null,
         );
     }
 }

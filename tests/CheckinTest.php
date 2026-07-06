@@ -35,10 +35,11 @@ class CheckinTest extends TestCase
         $client = $this->makeClient([
             new Response(200, [], json_encode([
                 'data' => [
-                    'matched' => true,
-                    'person_id' => 'uuid-123',
-                    'quality_score' => 0.92,
-                    'message' => 'OK',
+                    'match' => true,
+                    'subjectId' => 'uuid-123',
+                    'subjectName' => 'Ana Silva',
+                    'liveness' => ['ok' => true],
+                    'model' => 'adaface',
                 ],
             ])),
         ]);
@@ -46,8 +47,9 @@ class CheckinTest extends TestCase
         $result = (new CheckinModule($client))->identify(base64_encode('fake-frame'));
 
         $this->assertTrue($result->matched);
-        $this->assertSame('uuid-123', $result->personId);
-        $this->assertSame(0.92, $result->qualityScore);
+        $this->assertSame('uuid-123', $result->subjectId);
+        $this->assertSame('Ana Silva', $result->subjectName);
+        $this->assertTrue($result->livenessOk);
     }
 
     public function testIdentifyNotMatched(): void
@@ -55,10 +57,11 @@ class CheckinTest extends TestCase
         $client = $this->makeClient([
             new Response(200, [], json_encode([
                 'data' => [
-                    'matched' => false,
-                    'person_id' => null,
-                    'quality_score' => 0.4,
-                    'message' => 'face_not_recognized',
+                    'match' => false,
+                    'subjectId' => null,
+                    'subjectName' => null,
+                    'liveness' => ['ok' => true],
+                    'model' => 'adaface',
                 ],
             ])),
         ]);
@@ -66,7 +69,7 @@ class CheckinTest extends TestCase
         $result = (new CheckinModule($client))->identify(base64_encode('fake-frame'));
 
         $this->assertFalse($result->matched);
-        $this->assertSame('face_not_recognized', $result->message);
+        $this->assertNull($result->subjectId);
     }
 
     public function testThrowsAuthExceptionOn401(): void

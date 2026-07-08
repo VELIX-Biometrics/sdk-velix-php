@@ -64,6 +64,27 @@ endpoint exists on the real API.
 **Velix Time is not covered.** No `/v1/api/time/*` endpoint exists in the backend yet
 (see task #616) — there is no Time-related class in this SDK to call.
 
+| `ContextModule` | `create/get/list/update/remove()`, `authorize()`, `listAuthorizationDecisions()`, `createLinkRequest()` | `/v1/contexts/*` | BearerAuth (`token`) |
+| `ContextMembershipModule` | `create()`, `listByContext()`, `listByIdentity()`, `updateStatus()`, `addRoles()`, `removeRoles()` | `/v1/contexts/:id/memberships`, `/v1/identities/:id/memberships`, `/v1/memberships/*` | BearerAuth |
+| `ContextRoleModule` | `create()`, `list()`, `linkPermissions()` | `/v1/context-roles*` | BearerAuth |
+| `ContextPermissionModule` | `create()`, `list()` | `/v1/context-permissions` | BearerAuth |
+| `AuthorizationTokenModule` | `validate()` | `POST /v1/authorization-tokens/validate` | BearerAuth |
+
+## Identity Context
+
+```php
+$client = new VelixClient(['apiUrl' => 'https://api.velixbiometrics.com', 'token' => $jwt]);
+
+$context = (new ContextModule($client))->create(['name' => 'Matriz SP', 'contextType' => 'location']);
+$decision = (new ContextModule($client))->authorize($context['id'], ['identityId' => $identityId, 'permission' => 'access:enter']);
+$membership = (new ContextMembershipModule($client))->create($context['id'], ['identityId' => $identityId, 'roleIds' => [$roleId]]);
+// saída de contexto (definitiva, sem carência)
+(new ContextMembershipModule($client))->updateStatus($membership['id'], 'revoked');
+// vínculo cross-tenant — fica PENDING até a pessoa consentir via magic link
+(new ContextModule($client))->createLinkRequest($context['id'], ['identityId' => $identityId]);
+(new AuthorizationTokenModule($client))->validate('vat_...');
+```
+
 ## Onboarding Module
 
 ```php
